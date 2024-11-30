@@ -6,7 +6,8 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\KardexController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoryController;
-
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\WarehouseController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -42,7 +43,11 @@ Route::resource('items', ItemController::class);
     Route::put('items/{item}/adjust-stock', [ItemController::class, 'adjustStock'])
         ->name('items.adjust-stock');
         
+//Rutas para brands
+Route::resource('brands', BrandController::class);
 
+//Ruta para warehouses
+Route::resource('warehouses', WarehouseController::class);
 
 });
 
