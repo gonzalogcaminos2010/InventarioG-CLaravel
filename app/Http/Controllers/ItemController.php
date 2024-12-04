@@ -8,6 +8,8 @@ use App\Models\Brand;
 use App\Models\Warehouse;
 use App\Models\Movement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
 
 class ItemController extends Controller
 {
@@ -136,58 +138,51 @@ public function create()
     }
 
     public function adjustStock(Request $request, Item $item)
-{
-    $validated = $request->validate([
-        'warehouse_id' => 'required|exists:warehouses,id',
-        'stock_adjustment' => 'required|integer|not_in:0',
-        'adjustment_reason' => 'required|string'
-    ]);
-
-    DB::transaction(function() use ($item, $validated, $request) {
-        $warehouseItem = $item->warehouseItems()
-            ->firstOrCreate(
-                ['warehouse_id' => $request->warehouse_id],
-                ['current_stock' => 0]
-            );
-
-        // Actualizar el stock
-        $warehouseItem->current_stock += $validated['stock_adjustment'];
-        $warehouseItem->save();
-
-        // Registrar el movimiento
-        Movement::create([
-            'item_id' => $item->id,
-            'user_id' => auth()->id(),
-            'source_warehouse_id' => $request->stock_adjustment < 0 ? $request->warehouse_id : null,
-            'destination_warehouse_id' => $request->stock_adjustment > 0 ? $request->warehouse_id : null,
-            'type' => $request->stock_adjustment > 0 ? 'entry' : 'exit',
-            'status' => 'completed',
-            'quantity' => abs($validated['stock_adjustment']),
-            'comments' => $validated['adjustment_reason']
+    {
+        $validated = $request->validate([
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'stock_adjustment' => 'required|integer|not_in:0',
+            'adjustment_reason' => 'required|string'
         ]);
-    });
+    
+        \DB::transaction(function() use ($item, $validated, $request) {  // Nota el cambio aquí: \DB en lugar de DB
+            $warehouseItem = $item->warehouseItems()
+                ->firstOrCreate(
+                    ['warehouse_id' => $request->warehouse_id],
+                    ['current_stock' => 0]
+                );
+    
+            // Actualizar el stock
+            $warehouseItem->current_stock += $validated['stock_adjustment'];
+            $warehouseItem->save();
+    
+            // Registrar el movimiento
+            Movement::create([
+                'item_id' => $item->id,
+                'user_id' => auth()->id(),
+                'source_warehouse_id' => $request->stock_adjustment < 0 ? $request->warehouse_id : null,
+                'destination_warehouse_id' => $request->stock_adjustment > 0 ? $request->warehouse_id : null,
+                'type' => $request->stock_adjustment > 0 ? 'entry' : 'exit',
+                'status' => 'completed',
+                'quantity' => abs($validated['stock_adjustment']),
+                'comments' => $validated['adjustment_reason']
+            ]);
+        });
+    
+        return back()->with('success', 'Stock ajustado correctamente');
+    }
 
-    return back()->with('success', 'Stock ajustado correctamente');
-}
 
-public function show(Item $item)
-{
-    // Cargar las relaciones necesarias
-    $item->load([
-        'category',
-        'brand',
-        'warehouseItems.warehouse'
-    ]);
-
-    // Obtener los movimientos por separado
-    $movements = Movement::where('item_id', $item->id)
-        ->with(['user', 'sourceWarehouse', 'destinationWarehouse'])
-        ->latest()
-        ->take(10)
-        ->get();
-
-    return view('items.show', compact('item', 'movements'));
-}
+    public function show(Item $item){
+    
+        $movements = Movement::where('item_id', $item->id)
+            ->with(['user', 'sourceWarehouse', 'destinationWarehouse'])
+            ->latest()
+            ->paginate(15);
+    
+        return view('items.show', compact('item', 'movements'));
+    }
+    
 public function destroy(Item $item)
 {
     try {

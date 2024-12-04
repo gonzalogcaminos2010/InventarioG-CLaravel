@@ -1,4 +1,3 @@
-{{-- resources/views/items/edit.blade.php --}}
 @extends('layouts.app')
 
 @section('content')
@@ -6,6 +5,7 @@
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6 bg-white border-b border-gray-200">
+                {{-- Encabezado --}}
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">Editar Producto: {{ $item->name }}</h2>
                     <a href="{{ route('items.index') }}" 
@@ -14,6 +14,7 @@
                     </a>
                 </div>
 
+                {{-- Formulario principal --}}
                 <form action="{{ route('items.update', $item) }}" method="POST" class="space-y-6">
                     @csrf
                     @method('PUT')
@@ -118,9 +119,9 @@
                             Descripción
                         </label>
                         <textarea name="description" 
-                                  id="description" 
-                                  rows="3"
-                                  class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ old('description', $item->description) }}</textarea>
+                                 id="description" 
+                                 rows="3"
+                                 class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">{{ old('description', $item->description) }}</textarea>
                         @error('description')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -142,19 +143,18 @@
                                             <p class="font-medium text-gray-900">{{ $warehouse->name }}</p>
                                             <p class="text-sm text-gray-500">Stock Actual: {{ $warehouseItem ? $warehouseItem->current_stock : 0 }}</p>
                                         </div>
-                                        <div>
-                                            <a href="#" 
-                                               class="text-indigo-600 hover:text-indigo-900"
-                                               onclick="openStockModal('{{ $warehouse->name }}', {{ $warehouse->id }}, {{ $warehouseItem ? $warehouseItem->current_stock : 0 }})">
-                                                Ajustar Stock
-                                            </a>
-                                        </div>
+                                        <button type="button"
+                                                class="text-indigo-600 hover:text-indigo-900"
+                                                onclick="openStockModal('{{ $warehouse->name }}', {{ $warehouse->id }}, {{ $warehouseItem ? $warehouseItem->current_stock : 0 }})">
+                                            Ajustar Stock
+                                        </button>
                                     </div>
                                 @endforeach
                             </div>
                         </div>
                     </div>
 
+                    {{-- Botones de acción del formulario principal --}}
                     <div class="flex justify-end space-x-3">
                         <a href="{{ route('items.index') }}"
                            class="bg-gray-200 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
@@ -172,45 +172,57 @@
 </div>
 
 {{-- Modal para ajuste de stock --}}
-<div id="stockModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+<div id="stockModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
-            <h3 class="text-lg font-medium text-gray-900 mb-4" id="modalTitle">Ajustar Stock</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Ajustar Stock</h3>
+                <button type="button" onclick="closeStockModal()" class="text-gray-400 hover:text-gray-500">
+                    <span class="sr-only">Cerrar</span>
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
             <form id="adjustStockForm" method="POST" class="space-y-4">
                 @csrf
                 @method('PUT')
                 <input type="hidden" id="modalWarehouseId" name="warehouse_id">
                 
                 <div>
-                    <label for="stockAdjustment" class="block text-sm font-medium text-gray-700">
+                    <label for="stock_adjustment" class="block text-sm font-medium text-gray-700">
                         Cantidad a Ajustar
                     </label>
-                    <div class="mt-1 flex rounded-md shadow-sm">
+                    <div class="mt-1">
                         <input type="number" 
                                name="stock_adjustment" 
-                               id="stockAdjustment"
-                               class="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md sm:text-sm border-gray-300">
+                               id="stock_adjustment"
+                               class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                               required>
+                        <p class="mt-1 text-sm text-gray-500">Use números negativos para disminuir el stock</p>
                     </div>
                 </div>
 
                 <div>
-                    <label for="adjustmentReason" class="block text-sm font-medium text-gray-700">
+                    <label for="adjustment_reason" class="block text-sm font-medium text-gray-700">
                         Motivo del Ajuste
                     </label>
                     <textarea name="adjustment_reason" 
-                              id="adjustmentReason"
-                              rows="3"
-                              class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></textarea>
+                             id="adjustment_reason"
+                             rows="3"
+                             class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                             required></textarea>
                 </div>
 
                 <div class="flex justify-end space-x-3 mt-4">
                     <button type="button"
                             onclick="closeStockModal()"
-                            class="bg-gray-200 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                            class="bg-gray-200 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                         Cancelar
                     </button>
                     <button type="submit"
-                            class="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            class="bg-blue-600 px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Guardar Ajuste
                     </button>
                 </div>
@@ -227,10 +239,18 @@
         const modalWarehouseId = document.getElementById('modalWarehouseId');
         const form = document.getElementById('adjustStockForm');
         
+        // Actualizar el título y el ID del almacén
         modalTitle.textContent = `Ajustar Stock - ${warehouseName}`;
         modalWarehouseId.value = warehouseId;
+        
+        // Establecer la acción del formulario
         form.action = `{{ route('items.adjust-stock', $item) }}`;
         
+        // Limpiar campos del formulario
+        document.getElementById('stock_adjustment').value = '';
+        document.getElementById('adjustment_reason').value = '';
+        
+        // Mostrar el modal
         modal.classList.remove('hidden');
     }
 
@@ -239,13 +259,21 @@
         modal.classList.add('hidden');
     }
 
-    // Cerrar modal si se hace clic fuera
-    window.onclick = function(event) {
+    // Cerrar modal al hacer clic fuera
+    window.addEventListener('click', function(event) {
         const modal = document.getElementById('stockModal');
-        if (event.target == modal) {
+        if (event.target === modal) {
             closeStockModal();
         }
-    }
+    });
+
+    // Manejar escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeStockModal();
+        }
+    });
 </script>
 @endpush
+
 @endsection

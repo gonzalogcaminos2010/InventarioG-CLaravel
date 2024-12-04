@@ -51,8 +51,8 @@
                     <label for="movement_type" class="block text-sm font-medium text-gray-700">Tipo de Movimiento</label>
                     <select name="movement_type" id="movement_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                         <option value="">Todos</option>
-                        <option value="entrada" {{ request('movement_type') == 'entrada' ? 'selected' : '' }}>Entrada</option>
-                        <option value="salida" {{ request('movement_type') == 'salida' ? 'selected' : '' }}>Salida</option>
+                        <option value="entry" {{ request('movement_type') == 'entry' ? 'selected' : '' }}>Entrada</option>
+                        <option value="exit" {{ request('movement_type') == 'exit' ? 'selected' : '' }}>Salida</option>
                         <option value="transfer" {{ request('movement_type') == 'transfer' ? 'selected' : '' }}>Transferencia</option>
                     </select>
                 </div>
@@ -96,34 +96,32 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Fecha</th>
-                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Producto</th>
                                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Tipo</th>
-                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Cantidad</th>
+                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"># Items</th>
                                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Origen</th>
                                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Destino</th>
                                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Usuario</th>
                                         <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Comentarios</th>
+                                        <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 bg-white">
                                     @foreach($movements as $movement)
-                                        <tr>
+                                        <tr class="hover:bg-gray-50">
                                             <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6">
-                                                {{ $movement->created_at->format('d/m/Y H:i') }}
-                                            </td>
-                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                {{ $movement->item->name ?? 'N/A' }}
+                                                {{ \Carbon\Carbon::parse($movement->operation_date)->format('d/m/Y H:i') }}
                                             </td>
                                             <td class="whitespace-nowrap px-3 py-4 text-sm">
                                                 <span class="inline-flex rounded-full px-2 text-xs font-semibold leading-5 
-                                                    {{ $movement->type === 'entrada' ? 'bg-green-100 text-green-800' : 
-                                                       ($movement->type === 'salida' ? 'bg-red-100 text-red-800' : 
+                                                    {{ $movement->type === 'entry' ? 'bg-green-100 text-green-800' : 
+                                                       ($movement->type === 'exit' ? 'bg-red-100 text-red-800' : 
                                                         'bg-blue-100 text-blue-800') }}">
-                                                    {{ ucfirst($movement->type) }}
+                                                    {{ $movement->type === 'entry' ? 'Entrada' : 
+                                                       ($movement->type === 'exit' ? 'Salida' : 'Transferencia') }}
                                                 </span>
                                             </td>
                                             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                {{ $movement->quantity }}
+                                                {{ $movement->items_count }} items
                                             </td>
                                             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                 {{ $movement->sourceWarehouse->name ?? 'N/A' }}
@@ -136,6 +134,12 @@
                                             </td>
                                             <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                 {{ Str::limit($movement->comments, 30) }}
+                                            </td>
+                                            <td class="whitespace-nowrap px-3 py-4 text-sm font-medium">
+                                                <a href="{{ route('kardex.show', $movement->first_id) }}" 
+                                                   class="text-indigo-600 hover:text-indigo-900">
+                                                    Ver detalles
+                                                </a>
                                             </td>
                                         </tr>
                                     @endforeach

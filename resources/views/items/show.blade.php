@@ -1,4 +1,3 @@
-{{-- resources/views/items/show.blade.php --}}
 @extends('layouts.app')
 
 @section('content')
@@ -118,11 +117,10 @@
                     </div>
                 </div>
 
-                {{-- Últimos Movimientos --}}
+                {{-- Historial de Movimientos --}}
                 <div>
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-gray-900">Últimos Movimientos</h3>
-                        {{-- Aquí podrías agregar un enlace para ver todos los movimientos si lo deseas --}}
+                        <h3 class="text-lg font-medium text-gray-900">Historial de Movimientos</h3>
                     </div>
                     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -155,24 +153,36 @@
                                             {{ $movement->created_at->format('d/m/Y H:i') }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                                {{ $movement->type === 'entry' ? 'bg-green-100 text-green-800' : 
-                                                   ($movement->type === 'exit' ? 'bg-red-100 text-red-800' : 
-                                                    'bg-blue-100 text-blue-800') }}">
-                                                {{ $movement->type === 'entry' ? 'Entrada' : 
-                                                   ($movement->type === 'exit' ? 'Salida' : 'Transferencia') }}
+                                            @php
+                                                $typeClass = match($movement->type) {
+                                                    'entry' => 'bg-green-100 text-green-800',
+                                                    'exit' => 'bg-red-100 text-red-800',
+                                                    default => 'bg-blue-100 text-blue-800'
+                                                };
+                                                $typeText = match($movement->type) {
+                                                    'entry' => 'Entrada',
+                                                    'exit' => 'Salida',
+                                                    default => 'Transferencia'
+                                                };
+                                            @endphp
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $typeClass }}">
+                                                {{ $typeText }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {{ $movement->quantity }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @if($movement->type === 'entry')
-                                                → {{ $movement->destination_warehouse->name }}
-                                            @elseif($movement->type === 'exit')
-                                                {{ $movement->source_warehouse->name }} →
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            @if($movement->type === 'transfer')
+                                                <span class="font-medium text-gray-700">{{ $movement->sourceWarehouse->name }}</span>
+                                                <span class="text-blue-500 mx-2">→</span>
+                                                <span class="font-medium text-gray-700">{{ $movement->destinationWarehouse->name }}</span>
+                                            @elseif($movement->type === 'entry')
+                                                <span class="text-green-500 mr-2">→</span>
+                                                <span class="font-medium text-gray-700">{{ $movement->destinationWarehouse->name }}</span>
                                             @else
-                                                {{ $movement->source_warehouse->name }} → {{ $movement->destination_warehouse->name }}
+                                                <span class="font-medium text-gray-700">{{ $movement->sourceWarehouse->name }}</span>
+                                                <span class="text-red-500 ml-2">→</span>
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -191,6 +201,13 @@
                                 @endforelse
                             </tbody>
                         </table>
+
+                        {{-- Paginación --}}
+                        @if($movements->hasPages())
+                            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                                {{ $movements->links() }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

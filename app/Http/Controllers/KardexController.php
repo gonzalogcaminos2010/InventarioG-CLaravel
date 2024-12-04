@@ -10,14 +10,13 @@ use App\Models\WarehouseItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
-
 class KardexController extends Controller
 {
     // Mapeo de tipos de movimiento
     private const TYPE_MAP = [
         'entrada' => 'entry',
         'salida' => 'exit',
-        'transfer' => 'transfer'
+        'transferencia' => 'transfer'
     ];
 
     public function __construct()
@@ -27,7 +26,18 @@ class KardexController extends Controller
 
     public function index(Request $request)
     {
-        $query = Movement::with(['item', 'user', 'sourceWarehouse', 'destinationWarehouse']);
+        $query = Movement::selectRaw('
+            user_id,
+            type,
+            source_warehouse_id,
+            destination_warehouse_id,
+            comments,
+            MIN(id) as first_id,
+            COUNT(*) as items_count,
+            created_at as operation_date,
+            MIN(movements.id) as id
+        ')
+        ->with(['user', 'sourceWarehouse', 'destinationWarehouse']);
 
         // Filtro por producto
         if ($request->filled('item')) {
@@ -36,7 +46,7 @@ class KardexController extends Controller
 
         // Filtro por tipo de movimiento
         if ($request->filled('movement_type')) {
-            $query->where('type', $request->movement_type);
+            $query->where('type', self::TYPE_MAP[$request->movement_type]);
         }
 
         // Filtro por rango de fechas
@@ -48,7 +58,17 @@ class KardexController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $movements = $query->latest()->paginate(20);
+        $movements = $query->groupBy(
+            'user_id',
+            'type',
+            'source_warehouse_id',
+            'destination_warehouse_id',
+            'comments',
+            'created_at'
+        )
+        ->orderBy('created_at', 'desc')
+        ->paginate(20);
+
         $items = Item::orderBy('name')->get();
 
         return view('kardex.index', compact('movements', 'items'));
@@ -71,7 +91,7 @@ class KardexController extends Controller
     {
         // Preparar reglas de validación base
         $rules = [
-            'type' => 'required|in:entrada,salida,transfer',
+            'type' => 'required|in:entrada,salida,transferencia',
             'item_id' => 'required|array|min:1',
             'item_id.*' => 'required|exists:items,id',
             'quantity' => 'required|array|min:1',
@@ -87,7 +107,7 @@ class KardexController extends Controller
             case 'salida':
                 $rules['source_warehouse_id'] = 'required|exists:warehouses,id';
                 break;
-            case 'transfer':
+            case 'transferencia':
                 $rules['source_warehouse_id'] = 'required|exists:warehouses,id';
                 $rules['destination_warehouse_id'] = 'required|exists:warehouses,id|different:source_warehouse_id';
                 break;
@@ -105,7 +125,7 @@ class KardexController extends Controller
                 $quantity = $request->quantity[$key];
 
                 // Verificar stock disponible para salidas y transferencias
-                if (in_array($request->type, ['salida', 'transfer'])) {
+                if (in_array($request->type, ['salida', 'transferencia'])) {
                     $sourceWarehouseItem = WarehouseItem::firstOrNew([
                         'warehouse_id' => $request->source_warehouse_id,
                         'item_id' => $itemId
@@ -123,8 +143,8 @@ class KardexController extends Controller
                 $movement = Movement::create([
                     'item_id' => $itemId,
                     'user_id' => Auth::id(),
-                    'source_warehouse_id' => in_array($request->type, ['salida', 'transfer']) ? $request->source_warehouse_id : null,
-                    'destination_warehouse_id' => in_array($request->type, ['entrada', 'transfer']) ? $request->destination_warehouse_id : null,
+                    'source_warehouse_id' => in_array($request->type, ['salida', 'transferencia']) ? $request->source_warehouse_id : null,
+                    'destination_warehouse_id' => in_array($request->type, ['entrada', 'transferencia']) ? $request->destination_warehouse_id : null,
                     'type' => $movementType,
                     'status' => 'completed',
                     'quantity' => $quantity,
@@ -139,7 +159,7 @@ class KardexController extends Controller
                     case 'salida':
                         $this->processExitMovement($movement);
                         break;
-                    case 'transfer':
+                    case 'transferencia':
                         $this->processTransferMovement($movement);
                         break;
                 }
@@ -156,29 +176,48 @@ class KardexController extends Controller
         }
     }
 
-    public function show(Movement $movement)
+    public function show($id)
     {
-        $movement->load(['item', 'user', 'sourceWarehouse', 'destinationWarehouse']);
-        return view('kardex.show', compact('movement'));
+        // Cargar el movimiento principal con todas sus relaciones
+        $movement = Movement::with([
+            'user',
+            'sourceWarehouse',
+            'destinationWarehouse',
+            'item.category',
+            'item.brand'
+        ])->findOrFail($id);
+
+        // Cargar todos los movimientos relacionados con la misma operación
+        $relatedMovements = Movement::with([
+            'item.category',
+            'item.brand',
+            'sourceWarehouse',
+            'destinationWarehouse'
+        ])
+        ->where('created_at', $movement->created_at)
+        ->where('user_id', $movement->user_id)
+        ->where('type', $movement->type)
+        ->where('source_warehouse_id', $movement->source_warehouse_id)
+        ->where('destination_warehouse_id', $movement->destination_warehouse_id)
+        ->get();
+
+        return view('kardex.show', compact('movement', 'relatedMovements'));
     }
 
     public function edit(Movement $movement)
     {
-        // Por seguridad, no permitimos editar movimientos
         return redirect()->route('kardex.index')
             ->with('error', 'Los movimientos no pueden ser editados una vez creados.');
     }
 
     public function update(Request $request, Movement $movement)
     {
-        // Por seguridad, no permitimos editar movimientos
         return redirect()->route('kardex.index')
             ->with('error', 'Los movimientos no pueden ser editados una vez creados.');
     }
 
     public function destroy(Movement $movement)
     {
-        // Por seguridad, no permitimos eliminar movimientos
         return redirect()->route('kardex.index')
             ->with('error', 'Los movimientos no pueden ser eliminados.');
     }
@@ -211,59 +250,6 @@ class KardexController extends Controller
         }
         $warehouseItem->save();
     }
-
-
-public function checkWarehouseStock($warehouseId)
-{
-    $stockQuery = DB::select("
-        SELECT 
-            i.id,
-            i.name,
-            i.part_number,
-            COALESCE(wi.current_stock, 0) as current_stock,
-            i.minimum_stock,
-            w.name as warehouse_name,
-            c.name as category_name,
-            b.name as brand_name,
-            (
-                SELECT SUM(
-                    CASE 
-                        WHEN m.type = 'entry' AND m.destination_warehouse_id = wi.warehouse_id THEN m.quantity
-                        WHEN m.type = 'exit' AND m.source_warehouse_id = wi.warehouse_id THEN -m.quantity
-                        WHEN m.type = 'transfer' AND m.destination_warehouse_id = wi.warehouse_id THEN m.quantity
-                        WHEN m.type = 'transfer' AND m.source_warehouse_id = wi.warehouse_id THEN -m.quantity
-                        ELSE 0
-                    END
-                )
-                FROM movements m
-                WHERE m.item_id = i.id
-                AND (m.source_warehouse_id = wi.warehouse_id OR m.destination_warehouse_id = wi.warehouse_id)
-            ) as total_movement
-        FROM items i
-        LEFT JOIN warehouse_items wi ON i.id = wi.item_id AND wi.warehouse_id = ?
-        LEFT JOIN warehouses w ON wi.warehouse_id = w.id
-        LEFT JOIN categories c ON i.category_id = c.id
-        LEFT JOIN brands b ON i.brand_id = b.id
-        ORDER BY i.name ASC
-    ", [$warehouseId]);
-
-    return $stockQuery;
-}
-
-public function stockReport()
-{
-    $warehouses = Warehouse::with([
-        'warehouseItems.item.category',
-        'warehouseItems.item.brand'
-    ])
-    ->where('is_active', true)
-    ->orderBy('name')
-    ->get();
-
-    return view('kardex.stock-report', [
-        'warehouses' => $warehouses
-    ]);
-}
 
     private function processTransferMovement(Movement $movement)
     {

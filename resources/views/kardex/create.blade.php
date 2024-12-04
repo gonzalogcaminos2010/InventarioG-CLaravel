@@ -36,7 +36,7 @@
                             <option value="">Seleccionar tipo de movimiento</option>
                             <option value="entrada" {{ old('type') == 'entrada' ? 'selected' : '' }}>Entrada</option>
                             <option value="salida" {{ old('type') == 'salida' ? 'selected' : '' }}>Salida</option>
-                            <option value="transfer" {{ old('type') == 'transfer' ? 'selected' : '' }}>Transferencia</option>
+                            <option value="transferencia" {{ old('type') == 'transferencia' ? 'selected' : '' }}>Transferencia</option>
                         </select>
                     </div>
 
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (type === 'salida') {
             sourceWarehouseDiv.classList.remove('hidden');
             destinationWarehouseDiv.classList.add('hidden');
-        } else if (type === 'transfer') {
+        } else if (type === 'transferencia') {
             sourceWarehouseDiv.classList.remove('hidden');
             destinationWarehouseDiv.classList.remove('hidden');
         } else {
