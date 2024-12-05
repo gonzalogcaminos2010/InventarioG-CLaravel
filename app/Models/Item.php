@@ -11,8 +11,22 @@ class Item extends Model
         'description',
         'category_id',
         'brand_id',
-        'minimum_stock'
+        'minimum_stock',
+        'size_id',         // Añadido
+        'is_epp',          // Añadido
+        
     ];
+
+    protected $casts = [
+        'is_epp' => 'boolean',
+        
+    ];
+
+    // Relación con Talla
+    public function size()
+    {
+        return $this->belongsTo(Size::class);
+    }
 
     // Relaciones existentes
     public function category()
@@ -36,11 +50,9 @@ class Item extends Model
         return $this->hasMany(Movement::class);
     }
 
-    // Accessor para obtener el stock total
+    // Accesor para obtener el stock total
     public function getTotalStockAttribute()
     {
         return $this->warehouseItems->sum('current_stock');
     }
 }
-
-

@@ -9,10 +9,22 @@ use App\Models\Warehouse;
 use App\Models\Movement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use App\Models\Size;  // Agregamos el modelo Size
 
 class ItemController extends Controller
 {
+
+    public function eppIndex()
+{
+    // Obtener solo los ítems que son EPP, junto con su talla
+    $eppItems = Item::where('is_epp', true)
+        ->with('size','warehouseItems') // Cargar la relación de talla
+        ->get();
+
+    // Retornar la vista con los datos
+    return view('items.epp_index', compact('eppItems'));
+}
+
     public function index(Request $request)
 {
     
@@ -65,17 +77,21 @@ public function __construct()
 }
 
 public function create()
-    {
-        // Cargar las categorías, marcas y depósitos necesarios para el formulario
-        $categories = Category::orderBy('name')->get();
-        $brands = Brand::orderBy('name')->get();
-        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+{
+    $categories = Category::orderBy('name')->get();
+    $brands = Brand::orderBy('name')->get();
+    $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+    $sizes = Size::orderBy('name')->get();  // Agregamos los talles
 
-        return view('items.create', compact('categories', 'brands', 'warehouses'));
-    }
+    return view('items.create', compact('categories', 'brands', 'warehouses', 'sizes'));
+}
 
-    public function store(Request $request)
-    {
+public function store(Request $request)
+{
+    // Log para ver qué datos llegan
+    \Log::info('Request data:', $request->all());
+
+    try {
         $validated = $request->validate([
             'part_number' => 'required|unique:items',
             'name' => 'required',
@@ -84,11 +100,35 @@ public function create()
             'brand_id' => 'required|exists:brands,id',
             'minimum_stock' => 'required|integer|min:0',
             'initial_stock' => 'nullable|integer|min:0',
-            'warehouse_id' => 'required_with:initial_stock|exists:warehouses,id'
+            'warehouse_id' => 'required_with:initial_stock|exists:warehouses,id',
+            'is_epp' => 'sometimes|accepted',
+            'size_id' => 'required_if:is_epp,1|exists:sizes,id|nullable'
+            
         ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // Registrar errores de validación
+        \Log::error('Errores de validación:', $e->errors());
+        return back()->withErrors($e->errors())->withInput();
+    }
 
+    // Log para ver qué datos fueron validados
+    \Log::info('Validated data:', $validated);
+
+    try {
         \DB::transaction(function() use ($validated, $request) {
-            // Crear el item
+            // Log para ver qué datos se intentan crear
+            \Log::info('Creating item with:', [
+                'part_number' => $validated['part_number'],
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'category_id' => $validated['category_id'],
+                'brand_id' => $validated['brand_id'],
+                'minimum_stock' => $validated['minimum_stock'],
+                'is_epp' => $request->has('is_epp'),
+                'size_id' => $request->size_id,
+                'requires_return' => $request->has('requires_return'),
+            ]);
+
             $item = Item::create([
                 'part_number' => $validated['part_number'],
                 'name' => $validated['name'],
@@ -96,9 +136,11 @@ public function create()
                 'category_id' => $validated['category_id'],
                 'brand_id' => $validated['brand_id'],
                 'minimum_stock' => $validated['minimum_stock'],
+                'is_epp' => $request->has('is_epp'),
+                'size_id' => $request->size_id,
+                'requires_return' => $request->has('requires_return'),
             ]);
 
-            // Si se proporcionó stock inicial, crearlo
             if ($request->filled('initial_stock') && $request->filled('warehouse_id')) {
                 $item->warehouseItems()->create([
                     'warehouse_id' => $request->warehouse_id,
@@ -106,10 +148,17 @@ public function create()
                 ]);
             }
         });
-
-        return redirect()->route('items.index')
-            ->with('success', 'Producto creado exitosamente.');
+    } catch (\Exception $e) {
+        // Log cualquier error que ocurra
+        \Log::error('Error creating item:', ['error' => $e->getMessage()]);
+        return back()
+            ->withInput()
+            ->withErrors(['error' => 'Error al crear el item: ' . $e->getMessage()]);
     }
+
+    return redirect()->route('items.index')
+        ->with('success', 'Producto creado exitosamente.');
+}
 
     public function edit(Item $item)
     {
@@ -173,15 +222,21 @@ public function create()
     }
 
 
-    public function show(Item $item){
-    
+    public function show(Item $item)
+    {
         $movements = Movement::where('item_id', $item->id)
             ->with(['user', 'sourceWarehouse', 'destinationWarehouse'])
             ->latest()
             ->paginate(15);
     
+        // Cargar la relación 'size' si no está cargada
+        if (!$item->relationLoaded('size')) {
+            $item->load('size');
+        }
+    
         return view('items.show', compact('item', 'movements'));
     }
+    
     
 public function destroy(Item $item)
 {
