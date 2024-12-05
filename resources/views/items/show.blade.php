@@ -47,6 +47,23 @@
                                 <dt class="text-sm font-medium text-gray-500">Marca</dt>
                                 <dd class="mt-1 text-sm text-gray-900">{{ $item->brand->name }}</dd>
                             </div>
+
+                            {{-- Información específica de EPP --}}
+                            @if($item->is_epp)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Es EPP</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">Sí</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Talle</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $item->size ? $item->size->name : 'Sin talle' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Requiere Devolución</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $item->requires_return ? 'Sí' : 'No' }}</dd>
+                                </div>
+                            @endif
+
                         </dl>
                     </div>
 

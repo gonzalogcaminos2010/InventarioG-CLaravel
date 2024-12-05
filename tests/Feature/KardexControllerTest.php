@@ -28,5 +28,5 @@ class KardexController extends Controller
         ]);
     }
 
-    // ... resto de los métodos existentes ...
+  
 }

@@ -13,6 +13,17 @@
                     </a>
                 </div>
 
+                {{-- Mostrar errores de validación --}}
+                @if ($errors->any())
+                    <div class="mb-4">
+                        <ul class="list-disc list-inside text-sm text-red-600">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <form action="{{ route('items.store') }}" method="POST" class="space-y-6">
                     @csrf
 
@@ -20,7 +31,7 @@
                         {{-- Número de Parte --}}
                         <div>
                             <label for="part_number" class="block text-sm font-medium text-gray-700">
-                                Número de Parte *
+                                Código de EPP o Número de Parte *
                             </label>
                             <input type="text" 
                                    name="part_number" 
@@ -122,6 +133,50 @@
                         @enderror
                     </div>
 
+                    {{-- EPP --}}
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">Equipo de Protección Personal</h3>
+                            <div class="flex items-center">
+                                <input type="checkbox" 
+                                       name="is_epp" 
+                                       id="is_epp"
+                                       value="1"
+                                       class="toggle-fields h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                       data-target="#epp_fields"
+                                       {{ old('is_epp') ? 'checked' : '' }}>
+                                <label for="is_epp" class="ml-2 text-sm text-gray-700">
+                                    Es un EPP
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="epp_fields" class="space-y-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{-- Talle --}}
+                                <div>
+                                    <label for="size_id" class="block text-sm font-medium text-gray-700">
+                                        Talle
+                                    </label>
+                                    <select name="size_id" 
+                                            id="size_id"
+                                            class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <option value="">Seleccionar talle</option>
+                                        @foreach($sizes as $size)
+                                            <option value="{{ $size->id }}" {{ old('size_id') == $size->id ? 'selected' : '' }}>
+                                                {{ $size->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('size_id')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                   
+                        </div>
+                    </div>
+
                     {{-- Stock Inicial --}}
                     <div class="mt-6 p-4 bg-gray-50 rounded-lg">
                         <div class="flex items-center justify-between mb-4">
@@ -130,6 +185,7 @@
                                 <input type="checkbox" 
                                        name="has_initial_stock" 
                                        id="has_initial_stock"
+                                       value="1"
                                        class="toggle-fields h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                        data-target="#initial_stock_fields"
                                        {{ old('has_initial_stock') ? 'checked' : '' }}>
@@ -155,6 +211,9 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    @error('warehouse_id')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
 
                                 <div>
@@ -167,6 +226,9 @@
                                            value="{{ old('initial_stock', 0) }}"
                                            min="0"
                                            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+                                    @error('initial_stock')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -192,31 +254,29 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        console.log('Script de toggle-fields ejecutado');
-
+        // Script para el toggle de campos
         $('.toggle-fields').change(function() {
             const targetId = $(this).data('target');
-            console.log('Checkbox cambiado:', this);
-            console.log('Target ID:', targetId);
-
             const $target = $(targetId);
-            console.log('Elemento objetivo:', $target);
 
             if ($(this).is(':checked')) {
-                console.log('Checkbox está marcado');
                 $target.removeClass('hidden');
                 $target.find('input, select').prop('required', true);
             } else {
-                console.log('Checkbox no está marcado');
                 $target.addClass('hidden');
                 $target.find('input, select').prop('required', false);
-                $target.find('input[type="number"]').val('0');
+                $target.find('input[type="number"]').val('');
                 $target.find('select').val('');
             }
         });
 
-        // Ejecutar el cambio inicial para todos los checkboxes
+        // Ejecutar los cambios iniciales
         $('.toggle-fields').trigger('change');
+
+        // Deshabilitar el botón de envío después de enviar el formulario
+        $('form').on('submit', function() {
+            $(this).find('button[type="submit"]').prop('disabled', true);
+        });
     });
 </script>
 @endpush
