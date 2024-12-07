@@ -8,6 +8,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\WarehouseController;
+use App\Http\Controllers\EppDeliveryController;
+use App\Http\Controllers\EmployeeController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -23,11 +27,13 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+    
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    
     Route::get('/epps', [ItemController::class, 'eppIndex'])->name('items.epp_index');
     Route::get('kardex/stock-report', [KardexController::class, 'stockReport'])->name('kardex.stock-report');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -47,8 +53,23 @@ Route::resource('items', ItemController::class);
 //Rutas para brands
 Route::resource('brands', BrandController::class);
 
+//Rutas para entregas de EPP
+// Rutas para la gestión de entregas de EPP
+Route::resource('epp-deliveries', EppDeliveryController::class);
+
+
+//Rutas para los empleados
+
+Route::resource('employees', EmployeeController::class);
+
 //Ruta para warehouses
 Route::resource('warehouses', WarehouseController::class);
+
+//Rutas para backups
+
+Route::group(['middleware' => ['auth']], function () {
+    
+});
 
 });
 
