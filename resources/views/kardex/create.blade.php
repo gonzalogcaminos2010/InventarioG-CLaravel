@@ -157,7 +157,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 <select name="item_id[]" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                     <option value="">Seleccionar producto</option>
                     @foreach($items as $item)
-                        <option value="{{ $item->id }}">{{ $item->name }}</option>
+                        <option value="{{ $item->id }}">
+                            {{ $item->part_number }} - {{ $item->name }}
+                        </option>
                     @endforeach
                 </select>
             </td>

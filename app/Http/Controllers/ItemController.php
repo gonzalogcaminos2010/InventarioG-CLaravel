@@ -25,6 +25,22 @@ class ItemController extends Controller
     return view('items.epp_index', compact('eppItems'));
 }
 
+//ESTE METODO ES PARA OBTENER LOS EPP QUE TIENEN STOCK POR DEPOSITO
+
+public function eppStockIndex()
+{
+    // Obtenemos todos los EPP
+    $eppItems = Item::where('is_epp', true)
+        ->with('size', 'warehouseItems.warehouse') // Cargamos las tallas y la relación con warehouseItems y Warehouses
+        ->get();
+
+    // Obtenemos todos los depósitos activos (o todos, según prefieras)
+    $warehouses = Warehouse::orderBy('name')->get();
+
+    // Retornamos la vista con la información necesaria
+    return view('items.epp_stock_index', compact('eppItems', 'warehouses'));
+}
+
     public function index(Request $request)
 {
     
@@ -103,20 +119,16 @@ public function store(Request $request)
             'warehouse_id' => 'required_with:initial_stock|exists:warehouses,id',
             'is_epp' => 'sometimes|accepted',
             'size_id' => 'required_if:is_epp,1|exists:sizes,id|nullable'
-            
         ]);
     } catch (\Illuminate\Validation\ValidationException $e) {
-        // Registrar errores de validación
         \Log::error('Errores de validación:', $e->errors());
         return back()->withErrors($e->errors())->withInput();
     }
 
-    // Log para ver qué datos fueron validados
     \Log::info('Validated data:', $validated);
 
     try {
-        \DB::transaction(function() use ($validated, $request) {
-            // Log para ver qué datos se intentan crear
+        $item = \DB::transaction(function() use ($validated, $request) {
             \Log::info('Creating item with:', [
                 'part_number' => $validated['part_number'],
                 'name' => $validated['name'],
@@ -129,6 +141,7 @@ public function store(Request $request)
                 'requires_return' => $request->has('requires_return'),
             ]);
 
+            // Crear el item
             $item = Item::create([
                 'part_number' => $validated['part_number'],
                 'name' => $validated['name'],
@@ -141,25 +154,45 @@ public function store(Request $request)
                 'requires_return' => $request->has('requires_return'),
             ]);
 
+            // Si hay stock inicial, crear el warehouse_item y el movimiento
             if ($request->filled('initial_stock') && $request->filled('warehouse_id')) {
+                // Crear el registro en warehouse_items
                 $item->warehouseItems()->create([
                     'warehouse_id' => $request->warehouse_id,
                     'current_stock' => $request->initial_stock
                 ]);
+
+                // Crear el movimiento inicial
+                Movement::create([
+                    'item_id' => $item->id,
+                    'user_id' => auth()->id(),
+                    'destination_warehouse_id' => $request->warehouse_id,
+                    'type' => 'entry',
+                    'status' => 'completed',
+                    'quantity' => $request->initial_stock,
+                    'comments' => 'Stock Inicial'
+                ]);
+
+                \Log::info('Initial stock movement created:', [
+                    'item_id' => $item->id,
+                    'warehouse_id' => $request->warehouse_id,
+                    'quantity' => $request->initial_stock
+                ]);
             }
+
+            return $item;
         });
+
+        return redirect()->route('items.index')
+            ->with('success', 'Producto creado exitosamente.');
+
     } catch (\Exception $e) {
-        // Log cualquier error que ocurra
         \Log::error('Error creating item:', ['error' => $e->getMessage()]);
         return back()
             ->withInput()
             ->withErrors(['error' => 'Error al crear el item: ' . $e->getMessage()]);
     }
-
-    return redirect()->route('items.index')
-        ->with('success', 'Producto creado exitosamente.');
 }
-
     public function edit(Item $item)
     {
         $categories = Category::orderBy('name')->get();

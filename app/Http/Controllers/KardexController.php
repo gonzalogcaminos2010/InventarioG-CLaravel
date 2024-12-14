@@ -1,4 +1,12 @@
 <?php
+/**
+ * Class KardexController
+ * 
+ * Este controlador maneja las operaciones relacionadas con el sistema Kardex, incluyendo
+ * listar, crear, almacenar, mostrar y procesar movimientos de artículos en el inventario.
+ * 
+ * @package App\Http\Controllers
+ */
 
 namespace App\Http\Controllers;
 
@@ -19,13 +27,24 @@ class KardexController extends Controller
         'transferencia' => 'transfer'
     ];
 
+    /**
+     * Constructor de KardexController.
+     * Aplica el middleware 'auth' para asegurar que solo los usuarios autenticados puedan acceder a los métodos.
+     */
     public function __construct()
     {
         $this->middleware('auth');
     }
 
+    /**
+     * Muestra una lista de los movimientos.
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View
+     */
     public function index(Request $request)
     {
+        // Consulta para seleccionar movimientos con campos específicos y relaciones
         $query = Movement::selectRaw('
             user_id,
             type,
@@ -39,17 +58,17 @@ class KardexController extends Controller
         ')
         ->with(['user', 'sourceWarehouse', 'destinationWarehouse']);
 
-        // Filtro por producto
+        // Filtrar por artículo
         if ($request->filled('item')) {
             $query->where('item_id', $request->item);
         }
 
-        // Filtro por tipo de movimiento
+        // Filtrar por tipo de movimiento
         if ($request->filled('movement_type')) {
             $query->where('type', self::TYPE_MAP[$request->movement_type]);
         }
 
-        // Filtro por rango de fechas
+        // Filtrar por rango de fechas
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -58,6 +77,7 @@ class KardexController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
+        // Agrupar y paginar los resultados
         $movements = $query->groupBy(
             'user_id',
             'type',
@@ -69,11 +89,17 @@ class KardexController extends Controller
         ->orderBy('created_at', 'desc')
         ->paginate(20);
 
+        // Obtener todos los artículos para el filtro desplegable
         $items = Item::orderBy('name')->get();
 
         return view('kardex.index', compact('movements', 'items'));
     }
 
+    /**
+     * Muestra el formulario para crear un nuevo movimiento.
+     * 
+     * @return \Illuminate\View\View
+     */
     public function create()
     {
         $items = Item::with(['warehouseItems.warehouse', 'category', 'brand'])
@@ -87,6 +113,12 @@ class KardexController extends Controller
         return view('kardex.create', compact('items', 'warehouses'));
     }
 
+    /**
+     * Almacena un nuevo movimiento en la base de datos.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
         // Preparar reglas de validación base
@@ -176,6 +208,12 @@ class KardexController extends Controller
         }
     }
 
+    /**
+     * Muestra los detalles de un movimiento específico.
+     * 
+     * @param int $id
+     * @return \Illuminate\View\View
+     */
     public function show($id)
     {
         // Cargar el movimiento principal con todas sus relaciones
@@ -204,24 +242,48 @@ class KardexController extends Controller
         return view('kardex.show', compact('movement', 'relatedMovements'));
     }
 
+    /**
+     * Redirige a la lista de movimientos con un mensaje de error.
+     * 
+     * @param Movement $movement
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function edit(Movement $movement)
     {
         return redirect()->route('kardex.index')
             ->with('error', 'Los movimientos no pueden ser editados una vez creados.');
     }
 
+    /**
+     * Redirige a la lista de movimientos con un mensaje de error.
+     * 
+     * @param Request $request
+     * @param Movement $movement
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function update(Request $request, Movement $movement)
     {
         return redirect()->route('kardex.index')
             ->with('error', 'Los movimientos no pueden ser editados una vez creados.');
     }
 
+    /**
+     * Redirige a la lista de movimientos con un mensaje de error.
+     * 
+     * @param Movement $movement
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function destroy(Movement $movement)
     {
         return redirect()->route('kardex.index')
             ->with('error', 'Los movimientos no pueden ser eliminados.');
     }
 
+    /**
+     * Procesa un movimiento de entrada.
+     * 
+     * @param Movement $movement
+     */
     private function processEntryMovement(Movement $movement)
     {
         $warehouseItem = WarehouseItem::firstOrNew([
@@ -233,6 +295,12 @@ class KardexController extends Controller
         $warehouseItem->save();
     }
 
+    /**
+     * Procesa un movimiento de salida.
+     * 
+     * @param Movement $movement
+     * @throws \Exception
+     */
     private function processExitMovement(Movement $movement)
     {
         $warehouseItem = WarehouseItem::where([
@@ -251,6 +319,34 @@ class KardexController extends Controller
         $warehouseItem->save();
     }
 
+    /**
+     * Registra el stock inicial de un artículo en un almacén.
+     * 
+     * @param int $item_id
+     * @param int $warehouse_id
+     * @param int $initial_quantity
+     * @param int $user_id
+     * @return Movement
+     */
+    private function registerInitialStock($item_id, $warehouse_id, $initial_quantity, $user_id)
+    {
+        return Movement::create([
+            'item_id' => $item_id,
+            'user_id' => $user_id,
+            'destination_warehouse_id' => $warehouse_id,
+            'type' => 'entry',
+            'status' => 'completed',
+            'quantity' => $initial_quantity,
+            'comments' => 'Stock Inicial'
+        ]);
+    }
+
+    /**
+     * Procesa un movimiento de transferencia.
+     * 
+     * @param Movement $movement
+     * @throws \Exception
+     */
     private function processTransferMovement(Movement $movement)
     {
         // Reducir del origen

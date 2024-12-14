@@ -7,8 +7,6 @@
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
                         {{-- <img src="{{ asset('images/logo.png') }}" alt="Logo de GYC" class="block h-9 w-auto fill-current text-gray-800"> --}}
-
-
                     </a>
                     <a href="{{ route('items.epp_index') }}" class="text-gray-700 hover:text-gray-900">EPPs</a>
                 </div>
@@ -18,6 +16,31 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Panel Principal') }}
                     </x-nav-link>
+
+                    <!-- Dropdown para Stock EPP por Depósito -->
+                    <div class="hidden sm:flex sm:items-center">
+                        <x-dropdown align="left" width="48">
+                            <x-slot name="trigger">
+                                <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                                    <div>Stock EPP por Depósito</div>
+                                    <div class="ms-1">
+                                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </button>
+                            </x-slot>
+
+                            <x-slot name="content">
+                                @foreach(\App\Models\Warehouse::orderBy('name')->get() as $warehouse)
+                                    <x-dropdown-link :href="route('warehouses.epp-stock-detail', $warehouse->id)">
+                                        {{ $warehouse->name }}
+                                    </x-dropdown-link>
+                                @endforeach
+                            </x-slot>
+                        </x-dropdown>
+                    </div>
+
                     <x-nav-link :href="route('brands.index')" :active="request()->routeIs('brands.*')">
                         {{ __('Depositos') }}
                     </x-nav-link>
@@ -33,7 +56,9 @@
                     <x-nav-link :href="route('brands.index')" :active="request()->routeIs('brands.*')">
                         {{ __('Marcas') }}
                     </x-nav-link>
-                    
+                    <x-nav-link :href="route('sizes.index')" :active="request()->routeIs('sizes.*')">
+                        {{ __('Talles') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -89,18 +114,24 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('items.index')" :active="request()->routeIs('items.*')">
-                    {{ __('Items') }}
+
+            <!-- Stock EPP por Depósito -->
+            <div class="px-4 py-2 text-sm text-gray-700">Stock EPP por Depósito</div>
+            @foreach(\App\Models\Warehouse::orderBy('name')->get() as $warehouse)
+                <x-responsive-nav-link :href="route('warehouses.epp-stock-detail', $warehouse->id)">
+                    {{ $warehouse->name }}
+                </x-responsive-nav-link>
+            @endforeach
+
+            <x-responsive-nav-link :href="route('items.index')" :active="request()->routeIs('items.*')">
+                {{ __('Items') }}
             </x-responsive-nav-link>
-        
-            
             <x-responsive-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
                 {{ __('Categorías') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('kardex.index')" :active="request()->routeIs('kardex.*')">
                 {{ __('Kardex') }}
             </x-responsive-nav-link>
-        
         </div>
 
         <!-- Responsive Settings Options -->

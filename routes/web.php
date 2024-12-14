@@ -10,7 +10,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\EppDeliveryController;
 use App\Http\Controllers\EmployeeController;
-
+use App\Http\Controllers\SizeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +49,10 @@ Route::resource('items', ItemController::class);
     // Nueva ruta para ajuste de stock
     Route::put('items/{item}/adjust-stock', [ItemController::class, 'adjustStock'])
         ->name('items.adjust-stock');
+
+//RUTA PARA VER ITEMS DE EPP POR DEPOSITO
+Route::get('/epp-stock', [ItemController::class, 'eppStockIndex'])->name('items.epp_stock_index');
+
         
 //Rutas para brands
 Route::resource('brands', BrandController::class);
@@ -65,6 +69,11 @@ Route::resource('employees', EmployeeController::class);
 //Ruta para warehouses
 Route::resource('warehouses', WarehouseController::class);
 
+//STOCK DE EPP POR DEPOSITO de EPP (DETALLADO POR DEPOSITO)
+
+Route::get('/warehouses/{warehouse}/epp-stock-detail', [WarehouseController::class, 'eppStockDetail'])
+    ->name('warehouses.epp-stock-detail');
+
 //Rutas para backups
 
 Route::group(['middleware' => ['auth']], function () {
@@ -72,6 +81,10 @@ Route::group(['middleware' => ['auth']], function () {
 });
 
 });
+
+//RUTA PARA SIZES
+
+Route::resource('sizes', SizeController::class)->middleware('auth');
 
 
 

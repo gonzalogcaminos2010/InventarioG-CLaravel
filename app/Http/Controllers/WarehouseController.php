@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use App\Models\WarehouseItem;
+use App\Models\Item;
 
 class WarehouseController extends Controller
 {
@@ -12,6 +14,35 @@ class WarehouseController extends Controller
 
         return view('warehouses.index', compact('warehouses'));
     }
+
+    public function warehouseEppStock(Warehouse $warehouse)
+{
+    $warehouseItems = WarehouseItem::with(['item.size'])
+        ->whereHas('item', function($query) {
+            $query->where('is_epp', true);
+        })
+        ->where('warehouse_id', $warehouse->id)
+        ->orderBy('current_stock')
+        ->get();
+
+    return view('warehouses.epp-stock-detail', compact('warehouse', 'warehouseItems'));
+}
+
+
+public function eppStockDetail(Warehouse $warehouse)
+{
+    $warehouseItems = WarehouseItem::with(['item.size'])
+        ->whereHas('item', function($query) {
+            $query->where('is_epp', true);
+        })
+        ->where('warehouse_id', $warehouse->id)
+        ->orderBy('current_stock')
+        ->get();
+
+    return view('warehouses.epp-stock-detail', compact('warehouse', 'warehouseItems'));
+}
+
+
 
     public function create(){
         return view('warehouses.create');

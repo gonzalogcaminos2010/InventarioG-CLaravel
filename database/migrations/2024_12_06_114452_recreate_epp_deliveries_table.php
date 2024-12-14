@@ -12,12 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('epp_deliveries', function (Blueprint $table) {
-            $table->foreignId('employee_id')->constrained();
-            $table->foreignId('user_id')->constrained();
-            $table->foreignId('warehouse_id')->constrained();
-            $table->date('delivery_date');
-            $table->enum('status', ['completed'])->default('completed');
-            $table->text('comments')->nullable();
+         
         });
     }
 
